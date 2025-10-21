@@ -38,10 +38,9 @@ function readDashboard_(from, to) {
     orders:  sales.reduce(function(a,r){ return a + num_(r['注文件数']); }, 0),
     units:   sales.reduce(function(a,r){ return a + num_(r['出荷商品数']); }, 0)
   };
-  var stockRows = readAll_(SH.STOCK_GLOBAL_DAILY).filter(function(r){ return toYmd_(r['日付'])===to; });
-  res.stockTotal = stockRows.length ? num_(stockRows[0]['在庫数']) : 0;
-
+  // 在庫合計は「商品状態」の「現在在庫数」の合計とする
   var stateRows = readAll_(SH.STATE);
+  res.stockTotal = stateRows.reduce(function(a,r){ return a + num_(r['現在在庫数']); }, 0);
   res.recommendedOrderTotal = stateRows.reduce(function(a,r){ return a + num_(r['推奨発注数']); }, 0);
   res.demandForecastTotal   = stateRows.reduce(function(a,r){ return a + num_(r['需要予測']); }, 0);
   // AOV
@@ -51,7 +50,10 @@ function readDashboard_(from, to) {
     var bb = readAll_(SH.BUYBOX_DAILY === 'カート取得率日次' ? '商品別カート取得率集計' : '商品別カート取得率集計');
     var w = 0, v = 0;
     bb.forEach(function(r){
-      var rate = num_(r['平均カート取得率（30日）']);
+      var rateRaw = num_(r['平均カート取得率（30日）']);
+      // シートは%（0..100）または比率（0..1）が混在し得るため正規化
+      var rate = rateRaw > 1 ? (rateRaw / 100) : rateRaw;
+      if (rate < 0) rate = 0; if (rate > 1) rate = 1;
       var sess = num_(r['総セッション数（30日）']);
       if (!sess && !rate) return;
       w += sess;
@@ -82,6 +84,10 @@ function joinState_(rowsBySku) {
   var bySku = {};
   st.forEach(function(r){
     bySku[String(r['SKU'])] = {
+      currentStock: num_(r['現在在庫数']),
+      category: String(r['カテゴリ'] || ''),
+      salePrice: num_(r['販売実質価格']),
+      cost: num_(r['仕入れ値（税抜）']),
       inventoryHealth: String(r['在庫健全性'] || ''),
       recommendedOrderQty: num_(r['推奨発注数']),
       demandForecast: num_(r['需要予測']),
@@ -90,6 +96,11 @@ function joinState_(rowsBySku) {
   });
   rowsBySku.forEach(function(x){
     var s = bySku[x.sku] || {};
+    x.currentStock = typeof s.currentStock === 'number' ? s.currentStock : 0;
+    // 商品状態のカテゴリ/価格/原価を優先して付与
+    if (s.category) x.category = s.category;
+    if (typeof s.salePrice === 'number') x.salePrice = s.salePrice;
+    if (typeof s.cost === 'number') x.cost = s.cost;
     x.inventoryHealth = s.inventoryHealth || null;
     x.recommendedOrderQty = s.recommendedOrderQty || 0;
     x.demandForecast = s.demandForecast || 0;

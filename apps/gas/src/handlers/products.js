@@ -12,20 +12,23 @@ function handleProducts_(e) {
   sales.forEach(function(r){
     var sku = String(r['SKU'] || '');
     if (!sku) return;
-    if (!agg[sku]) agg[sku] = { sku: sku, units:0, revenue:0 };
+    if (!agg[sku]) agg[sku] = { sku: sku, units:0, revenue:0, orders:0, profit:0 };
     agg[sku].units   += num_(r['販売数量']);
     agg[sku].revenue += num_(r['実質売上']);
+    agg[sku].orders  += num_(r['注文件数']);
+    // 利益は税抜ベースを採用（総税抜利益）
+    agg[sku].profit  += num_(r['総税抜利益']);
   });
 
   var rows = Object.keys(agg).map(function(k){ return agg[k]; });
+  // 利益率（%）を付与（売上0のときは0）
+  rows.forEach(function(x){ x.profitRate = x.revenue ? (x.profit / x.revenue * 100) : 0; });
   joinMaster_(rows);
   joinState_(rows);
 
-  // 末日時点在庫
-  var stock = readAll_('商品別在庫日次集計').filter(function(r){ return toYmd_(r['日付'])===p.to; });
-  var stockMap = {};
-  stock.forEach(function(r){ stockMap[String(r['SKU'])] = num_(r['在庫数']); });
-  rows.forEach(function(x){ x.stock = stockMap[x.sku] || 0; });
+  // 在庫は商品状態の「現在在庫数」を優先
+  // joinState_ で currentStock が付与済み
+  rows.forEach(function(x){ x.stock = typeof x.currentStock === 'number' ? x.currentStock : 0; });
 
   // カート率（ASINベース → マスタでSKUへ）：シンプルな加重平均（日次）
   // 週/月の集計表が与えられている前提につき『商品別カート取得率集計』を参照
