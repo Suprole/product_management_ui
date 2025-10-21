@@ -29,18 +29,38 @@ function readAll_(sheetName) {
 }
 
 function readDashboard_(from, to) {
-  var sales = readAll_(SH.DAILY_SALES).filter(function(r){ return (r['売上日']>=from && r['売上日']<=to); });
+  var sales = readAll_(SH.DAILY_SALES).filter(function(r){
+    var y = toYmd_(r['売上日']);
+    return inRangeYmd_(y, from, to);
+  });
   var res = {
     revenue: sales.reduce(function(a,r){ return a + num_(r['実質売上']); }, 0),
     orders:  sales.reduce(function(a,r){ return a + num_(r['注文件数']); }, 0),
     units:   sales.reduce(function(a,r){ return a + num_(r['出荷商品数']); }, 0)
   };
-  var stockRows = readAll_(SH.STOCK_GLOBAL_DAILY).filter(function(r){ return r['日付']===to; });
+  var stockRows = readAll_(SH.STOCK_GLOBAL_DAILY).filter(function(r){ return toYmd_(r['日付'])===to; });
   res.stockTotal = stockRows.length ? num_(stockRows[0]['在庫数']) : 0;
 
   var stateRows = readAll_(SH.STATE);
   res.recommendedOrderTotal = stateRows.reduce(function(a,r){ return a + num_(r['推奨発注数']); }, 0);
   res.demandForecastTotal   = stateRows.reduce(function(a,r){ return a + num_(r['需要予測']); }, 0);
+  // AOV
+  res.aov = res.orders ? (res.revenue / res.orders) : 0;
+  // 加重平均カート率（30日集計を重み付けに使用）
+  try {
+    var bb = readAll_(SH.BUYBOX_DAILY === 'カート取得率日次' ? '商品別カート取得率集計' : '商品別カート取得率集計');
+    var w = 0, v = 0;
+    bb.forEach(function(r){
+      var rate = num_(r['平均カート取得率（30日）']);
+      var sess = num_(r['総セッション数（30日）']);
+      if (!sess && !rate) return;
+      w += sess;
+      v += rate * sess;
+    });
+    res.buyboxRateWeighted = w ? (v / w) : 0;
+  } catch (e) {
+    res.buyboxRateWeighted = 0;
+  }
   return res;
 }
 
@@ -65,7 +85,7 @@ function joinState_(rowsBySku) {
       inventoryHealth: String(r['在庫健全性'] || ''),
       recommendedOrderQty: num_(r['推奨発注数']),
       demandForecast: num_(r['需要予測']),
-      stateUpdatedAt: r['更新日'] || ''
+      stateUpdatedAt: (r['更新日'] || r['更新日時'] || '')
     };
   });
   rowsBySku.forEach(function(x){

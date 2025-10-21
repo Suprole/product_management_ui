@@ -1,0 +1,180 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Search, ArrowUpDown } from "lucide-react"
+import { getProductsData, type Product } from "@/lib/data"
+import Link from "next/link"
+
+export function ProductsTable() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortField, setSortField] = useState<string>("totalProfit")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+
+  useEffect(() => {
+    getProductsData().then(setProducts)
+  }, [])
+
+  const filteredProducts = products
+    .filter(
+      (p) =>
+        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.productName.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const aVal = a[sortField as keyof Product]
+      const bVal = b[sortField as keyof Product]
+      if (typeof aVal === "number" && typeof bVal === "number") {
+        return sortDirection === "asc" ? aVal - bVal : bVal - aVal
+      }
+      return 0
+    })
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("desc")
+    }
+  }
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold">商品一覧</CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="SKUまたは商品名で検索..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 w-64 bg-background border-border"
+              />
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground">SKU</TableHead>
+                <TableHead className="text-muted-foreground">商品名</TableHead>
+                <TableHead className="text-muted-foreground text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort("currentStock")}
+                    className="hover:bg-transparent"
+                  >
+                    在庫 <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
+                <TableHead className="text-muted-foreground text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort("totalSales")}
+                    className="hover:bg-transparent"
+                  >
+                    売上 <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
+                <TableHead className="text-muted-foreground text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort("totalProfit")}
+                    className="hover:bg-transparent"
+                  >
+                    利益 <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
+                <TableHead className="text-muted-foreground text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort("profitRate")}
+                    className="hover:bg-transparent"
+                  >
+                    利益率 <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
+                <TableHead className="text-muted-foreground text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSort("orderCount")}
+                    className="hover:bg-transparent"
+                  >
+                    注文数 <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </TableHead>
+                <TableHead className="text-muted-foreground">状態</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.map((product) => (
+                <TableRow key={product.sku} className="border-border hover:bg-muted/50">
+                  <TableCell className="font-mono text-sm">
+                    <Link href={`/products/${product.sku}`} className="hover:underline text-blue-500">
+                      {product.sku}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">{product.productName}</TableCell>
+                  <TableCell className="text-right">
+                    <span className={product.currentStock === 0 ? "text-destructive font-semibold" : ""}>
+                      {product.currentStock}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">¥{product.totalSales.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">
+                    <span
+                      className={
+                        product.totalProfit >= 0 ? "text-green-500 font-semibold" : "text-red-500 font-semibold"
+                      }
+                    >
+                      ¥{product.totalProfit.toLocaleString()}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className={product.profitRate >= 0 ? "text-green-500" : "text-red-500"}>
+                      {product.profitRate.toFixed(1)}%
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">{product.orderCount}</TableCell>
+                  <TableCell>
+                    {product.currentStock === 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        在庫切れ
+                      </Badge>
+                    )}
+                    {product.currentStock > 0 && product.currentStock < 20 && (
+                      <Badge variant="secondary" className="text-xs">
+                        在庫不足
+                      </Badge>
+                    )}
+                    {product.currentStock >= 20 && (
+                      <Badge variant="default" className="text-xs">
+                        正常
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
