@@ -1,0 +1,23 @@
+function json_(obj, status) {
+  obj = obj || {};
+  if (status) obj._status = status;
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+function num_(v) { v = Number(v); return isNaN(v) ? 0 : v; }
+function today_() { return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd'); }
+function cacheGet_(key) { return CacheService.getScriptCache().get(key); }
+function cachePut_(key, value, seconds) { CacheService.getScriptCache().put(key, value, seconds || 60); }
+
+function normalizeParams_(param) {
+  var from = param.from || Utilities.formatDate(new Date(Date.now()-30*86400000), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var to   = param.to   || today_();
+  var grain= (param.grain || 'day').toLowerCase();
+  return { from: from, to: to, grain: grain, sku: param.sku || '' };
+}
+function guard_(e) {
+  var token = e && e.parameter && e.parameter.key;
+  var expected = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+  if (!expected || token !== expected) throw new Error('unauthorized');
+}
+
+
