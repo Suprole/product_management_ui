@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import type { DailyProductSales } from "@/lib/data"
+type DailyProductSales = { date: string; totalSales: number; totalProfit: number; salesQuantity: number; orderCount: number }
 
 export function ProductSalesChart({ data }: { data: DailyProductSales[] }) {
   return (

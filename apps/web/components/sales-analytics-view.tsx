@@ -1,16 +1,41 @@
 import { Card } from "@/components/ui/card"
-import { getSalesAnalytics, getSalesData } from "@/lib/data"
 import { TrendingUp, TrendingDown, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { SalesChart } from "./sales-chart"
+import { headers } from "next/headers"
+import { DashboardResponse, ProductsResponse } from "@/lib/types"
 
 export async function SalesAnalyticsView() {
-  const analytics = await getSalesAnalytics()
-  const salesData = await getSalesData()
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
 
-  const totalSales = salesData.reduce((sum, day) => sum + day.totalSales, 0)
-  const totalProfit = salesData.reduce((sum, day) => sum + day.totalProfit, 0)
-  const averageProfitRate = (totalProfit / totalSales) * 100
+  const [dashRes, prodRes] = await Promise.all([
+    fetch(`${base}/api/gas/dashboard`, { cache: 'no-store' }),
+    fetch(`${base}/api/gas/products`, { cache: 'no-store' }),
+  ])
+  const dash = (await dashRes.json()) as DashboardResponse
+  const prod = (await prodRes.json()) as ProductsResponse
+  const items = 'items' in prod ? prod.items : []
+
+  const totalSales = 'kpi' in dash ? dash.kpi.revenue : items.reduce((s, it: any) => s + Number(it.revenue ?? it.totalSales ?? 0), 0)
+  const totalProfit = items.reduce((s, it: any) => s + Number(it.profit ?? it.totalProfit ?? 0), 0)
+  const averageProfitRate = totalSales ? (totalProfit / totalSales) * 100 : 0
+
+  const normalized = items.map((it: any) => ({
+    sku: it.sku,
+    productName: it.name || it.productName || '',
+    revenue: Number(it.revenue ?? it.totalSales ?? 0),
+    salesQuantity: Number(it.units ?? it.salesQuantity ?? 0),
+    totalProfit: Number(it.profit ?? it.totalProfit ?? 0),
+    profitRate: typeof it.profitRate === 'number' ? it.profitRate : (Number(it.revenue ?? 0) ? (Number(it.profit ?? 0) / Number(it.revenue ?? 1)) * 100 : 0),
+  }))
+  const analytics = {
+    topProducts: normalized.slice().sort((a, b) => b.revenue - a.revenue).slice(0, 10),
+    profitRanking: normalized.slice().sort((a, b) => b.totalProfit - a.totalProfit).slice(0, 10),
+    lowProfitProducts: normalized.filter((p) => p.profitRate < 5).sort((a, b) => a.profitRate - b.profitRate),
+  }
 
   return (
     <div className="space-y-6">
@@ -75,7 +100,7 @@ export async function SalesAnalyticsView() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold">¥{product.totalSales.toLocaleString()}</p>
+                  <p className="font-bold">¥{Math.round(product.revenue).toLocaleString()}</p>
                   <p className="text-sm text-muted-foreground">{product.salesQuantity}個</p>
                 </div>
               </Link>

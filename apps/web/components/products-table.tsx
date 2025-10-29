@@ -7,17 +7,42 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, ArrowUpDown } from "lucide-react"
-import { getProductsData, type Product } from "@/lib/data"
+// import from API instead of mock data
 import Link from "next/link"
 
+type UIProduct = {
+  sku: string
+  productName: string
+  orderCount: number
+  currentStock: number
+  totalSales: number
+  totalProfit: number
+  profitRate: number
+}
+
 export function ProductsTable() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<UIProduct[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [sortField, setSortField] = useState<string>("totalProfit")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
-    getProductsData().then(setProducts)
+    const run = async () => {
+      const res = await fetch(`/api/gas/products`, { cache: 'no-store' })
+      const data = await res.json()
+      const items = Array.isArray(data?.items) ? data.items : []
+      const mapped: UIProduct[] = items.map((it: any) => ({
+        sku: it.sku,
+        productName: it.name || it.productName || '',
+        orderCount: it.orders ?? it.orderCount ?? 0,
+        currentStock: it.stock ?? it.currentStock ?? 0,
+        totalSales: Math.round(it.revenue ?? it.totalSales ?? 0),
+        totalProfit: Math.round(it.profit ?? it.totalProfit ?? 0),
+        profitRate: typeof it.profitRate === 'number' ? it.profitRate : ((it.revenue ? ((it.profit ?? 0) / (it.revenue || 1)) * 100 : 0)),
+      }))
+      setProducts(mapped)
+    }
+    run()
   }, [])
 
   const filteredProducts = products
@@ -27,8 +52,8 @@ export function ProductsTable() {
         p.productName.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
-      const aVal = a[sortField as keyof Product]
-      const bVal = b[sortField as keyof Product]
+      const aVal = (a as any)[sortField]
+      const bVal = (b as any)[sortField]
       if (typeof aVal === "number" && typeof bVal === "number") {
         return sortDirection === "asc" ? aVal - bVal : bVal - aVal
       }

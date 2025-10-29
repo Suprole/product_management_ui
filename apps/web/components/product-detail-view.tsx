@@ -1,25 +1,68 @@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { getProductDetail, getProductDailySales, getProductInventoryHistory, getProductCartWinRate } from "@/lib/data"
 import { ArrowLeft, Package, TrendingUp, ShoppingCart, Star } from "lucide-react"
 import Link from "next/link"
 import { ProductSalesChart } from "./product-sales-chart"
 import { ProductInventoryChart } from "./product-inventory-chart"
 import { ProductCartWinChart } from "./product-cart-win-chart"
+import { headers } from "next/headers"
 
 export async function ProductDetailView({ sku }: { sku: string }) {
-  const product = await getProductDetail(sku)
-  const dailySales = await getProductDailySales(sku)
-  const inventoryHistory = await getProductInventoryHistory(sku)
-  const cartWinRate = await getProductCartWinRate(sku)
-
-  if (!product) {
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
+  const res = await fetch(`${base}/api/gas/product/${encodeURIComponent(sku)}`, { cache: 'no-store' })
+  const data = await res.json()
+  if (!data || data.error) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">商品が見つかりませんでした</p>
       </div>
     )
   }
+  const kpis = data.kpis || {}
+  const series = data.series || {}
+  const product = {
+    productName: data.name || '',
+    sku: data.sku || sku,
+    asin: data.asin || '',
+    category: data.category || '',
+    currentStock: kpis.stockCurrent ?? kpis.stockEnd ?? 0,
+    totalSales: Math.round(kpis.revenue ?? 0),
+    orderCount: Math.round(kpis.units ?? 0),
+    price: Math.round((data.price ?? 0) || 0),
+    cost: Math.round((data.cost ?? 0) || 0),
+    totalProfit: Math.round((data.totalProfit ?? 0) || 0),
+    profitRate: typeof data.profitRate === 'number' ? data.profitRate : ((kpis.revenue ? ((data.totalProfit ?? 0) / (kpis.revenue || 1)) * 100 : 0)),
+    averageRating: 0,
+    reviewCount: 0,
+    salesQuantity: Math.round(kpis.units ?? 0),
+    unitProfit: Math.round((data.unitProfit ?? (kpis.revenue ? ((data.totalProfit ?? 0) / (kpis.units || 1)) : 0)) || 0),
+  }
+  const mapByDate = (arr: any[]) => {
+    const m: Record<string, number> = {}
+    arr.forEach((x: any) => { m[x.date] = x.value })
+    return m
+  }
+  const rev = mapByDate(series.revenueDaily || [])
+  const prf = mapByDate(series.profitDaily || [])
+  const dates = Object.keys(rev).sort()
+  const dailySales = dates.map((d) => ({
+    date: d,
+    totalSales: rev[d] || 0,
+    totalProfit: prf[d] || 0,
+    salesQuantity: 0,
+    orderCount: 0,
+  }))
+  const inventoryHistory = (series.stockDaily || []).map((p: any) => ({ date: p.date, stock: p.value }))
+  const cartRows = [
+    { label: '7日', value: (data.kpis?.buybox7d ?? 0) * 100 },
+    { label: '30日', value: (data.kpis?.buybox30d ?? 0) * 100 },
+    { label: '全期間', value: (data.kpis?.buyboxAll ?? 0) * 100 },
+  ]
+
+  
 
   return (
     <div className="space-y-6">
@@ -138,9 +181,7 @@ export async function ProductDetailView({ sku }: { sku: string }) {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">商品単価利益</span>
-              <span className="font-medium">
-                ¥{Math.round(product.totalProfit / product.salesQuantity).toLocaleString()}
-              </span>
+              <span className="font-medium">¥{product.unitProfit.toLocaleString()}</span>
             </div>
           </div>
         </Card>
@@ -150,7 +191,7 @@ export async function ProductDetailView({ sku }: { sku: string }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProductInventoryChart data={inventoryHistory} />
-        <ProductCartWinChart data={cartWinRate} />
+        <ProductCartWinChart rows={cartRows} />
       </div>
     </div>
   )

@@ -1,37 +1,43 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertTriangle, TrendingDown, Package } from "lucide-react"
-import { getProductsData } from "@/lib/data"
+import { headers } from "next/headers"
 
 export async function AlertsPanel() {
-  const products = await getProductsData()
-
-  const lowStockProducts = products.filter((p) => p.stockHealth === "不足")
-  const outOfStockProducts = products.filter((p) => p.stockHealth === "out_of_stock")
-  const lowProfitProducts = products.filter((p) => p.profitRate < 0)
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
+  // products から集計: 推奨発注数>0, 在庫=0, 利益<0
+  const res = await fetch(`${base}/api/gas/products`, { cache: 'no-store' })
+  const data = await res.json()
+  const items: any[] = Array.isArray(data?.items) ? data.items : []
+  const lowStockCount = items.filter((it) => (it.recommendedOrderQty ?? 0) > 0).length
+  const outOfStockCount = items.filter((it) => (it.stock ?? it.currentStock ?? 0) === 0).length
+  const lowProfitCount = items.filter((it) => (it.profit ?? it.totalProfit ?? 0) < 0).length
 
   const alerts = [
     {
       type: "warning",
       icon: AlertTriangle,
       title: "在庫不足",
-      count: lowStockProducts.length,
-      description: `${lowStockProducts.length}商品が在庫不足です`,
+      count: lowStockCount,
+      description: `${lowStockCount}商品が在庫不足です`,
       color: "text-warning",
     },
     {
       type: "error",
       icon: Package,
       title: "在庫切れ",
-      count: outOfStockProducts.length,
-      description: `${outOfStockProducts.length}商品が在庫切れです`,
+      count: outOfStockCount,
+      description: `${outOfStockCount}商品が在庫切れです`,
       color: "text-destructive",
     },
     {
       type: "info",
       icon: TrendingDown,
       title: "赤字商品",
-      count: lowProfitProducts.length,
-      description: `${lowProfitProducts.length}商品が赤字です`,
+      count: lowProfitCount,
+      description: `${lowProfitCount}商品が赤字です`,
       color: "text-destructive",
     },
   ]

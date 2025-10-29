@@ -2,46 +2,32 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-
-// Mock data - last 30 days
-const mockData = [
-  { date: "09/20", value: 2042 },
-  { date: "09/21", value: 2044 },
-  { date: "09/22", value: 2032 },
-  { date: "09/23", value: 2030 },
-  { date: "09/24", value: 2026 },
-  { date: "09/25", value: 2028 },
-  { date: "09/26", value: 2025 },
-  { date: "09/27", value: 2031 },
-  { date: "09/28", value: 2033 },
-  { date: "09/29", value: 2010 },
-  { date: "09/30", value: 2012 },
-  { date: "10/01", value: 2018 },
-  { date: "10/02", value: 2009 },
-  { date: "10/03", value: 2001 },
-  { date: "10/04", value: 2084 },
-  { date: "10/05", value: 2195 },
-  { date: "10/06", value: 2246 },
-  { date: "10/07", value: 2255 },
-  { date: "10/08", value: 2278 },
-  { date: "10/09", value: 2330 },
-  { date: "10/10", value: 2769 },
-  { date: "10/11", value: 2804 },
-  { date: "10/12", value: 2815 },
-  { date: "10/13", value: 2810 },
-  { date: "10/14", value: 2817 },
-]
+import { useEffect, useState } from "react"
+import { DashboardResponse } from "@/lib/types"
 
 export function InventoryChart() {
+  const [data, setData] = useState<{ date: string; value: number }[]>([])
+
+  useEffect(() => {
+    const run = async () => {
+      const res = await fetch(`/api/gas/dashboard`, { cache: 'no-store' })
+      const json = (await res.json()) as DashboardResponse
+      if ('kpi' in json && json.series?.stock) {
+        setData(json.series.stock.map((p) => ({ date: p.date.substring(5), value: p.value })))
+      }
+    }
+    run()
+  }, [])
+
   return (
     <Card className="bg-card border-border">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">在庫推移</CardTitle>
-        <p className="text-sm text-muted-foreground">直近25日間の在庫数量</p>
+        <p className="text-sm text-muted-foreground">在庫数量の推移</p>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={mockData}>
+          <AreaChart data={data}>
             <defs>
               <linearGradient id="colorInventory" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="rgb(168 85 247)" stopOpacity={0.3} />

@@ -1,59 +1,65 @@
 import { TrendingUp, TrendingDown, DollarSign, Package, ShoppingCart, Percent } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getSalesData, getInventoryData, getProductsData } from "@/lib/data"
+import { DashboardResponse } from "@/lib/types"
+import { headers } from "next/headers"
+
+function formatJPY(n: number) {
+  return `¥${Math.round(n).toLocaleString()}`
+}
 
 export async function KPICards() {
-  const salesData = await getSalesData()
-  const inventoryData = await getInventoryData()
-  const productsData = await getProductsData()
-
-  // Calculate KPIs
-  const totalSales = salesData.reduce((sum, day) => sum + day.totalSales, 0)
-  const totalProfit = salesData.reduce((sum, day) => sum + day.totalProfit, 0)
-  const profitRate = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0
-  const currentInventoryValue = inventoryData[inventoryData.length - 1]?.inventoryValue || 0
-  const activeProducts = productsData.filter((p) => p.currentStock > 0).length
-  const lowStockProducts = productsData.filter((p) => p.stockHealth === "不足").length
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
+  const res = await fetch(`${base}/api/gas/dashboard`, { cache: 'no-store' })
+  const data = (await res.json()) as DashboardResponse
+  if (!('kpi' in data)) {
+    return null
+  }
+  const { kpi } = data
+  const orderCount = (kpi as any).orderCount ?? (kpi as any).orders ?? 0
+  const totalStock = (kpi as any).totalStock ?? (kpi as any).stockTotal ?? 0
 
   const kpis = [
     {
       title: "総売上",
-      value: `¥${(totalSales / 10000).toFixed(1)}万`,
-      change: "+12.5%",
+      value: formatJPY(kpi.revenue),
+      change: "",
       trend: "up" as const,
       icon: DollarSign,
       color: "text-chart-1",
     },
     {
-      title: "総利益",
-      value: `¥${(totalProfit / 10000).toFixed(1)}万`,
-      change: "+8.3%",
+      title: "注文件数",
+      value: String(orderCount),
+      change: "",
       trend: "up" as const,
-      icon: TrendingUp,
+      icon: ShoppingCart,
       color: "text-chart-2",
     },
     {
-      title: "利益率",
-      value: `${profitRate.toFixed(1)}%`,
-      change: "-2.1%",
-      trend: "down" as const,
+      title: "平均注文単価",
+      value: formatJPY(kpi.aov),
+      change: "",
+      trend: "up" as const,
       icon: Percent,
       color: "text-chart-3",
     },
     {
-      title: "在庫金額",
-      value: `¥${(currentInventoryValue / 10000).toFixed(1)}万`,
-      change: "+5.2%",
+      title: "在庫合計",
+      value: String(totalStock),
+      change: "",
       trend: "up" as const,
       icon: Package,
       color: "text-chart-5",
     },
     {
-      title: "販売中商品",
-      value: activeProducts.toString(),
-      change: `${lowStockProducts}件 在庫不足`,
-      trend: lowStockProducts > 0 ? ("down" as const) : ("up" as const),
-      icon: ShoppingCart,
+      title: "加重カート率",
+      value: `${(kpi.buyboxRateWeighted * 100).toFixed(1)}%`,
+      change: "",
+      trend: "up" as const,
+      icon: TrendingUp,
       color: "text-chart-4",
     },
   ]
