@@ -36,8 +36,11 @@ function readDashboard_(from, to) {
   var res = {
     revenue: sales.reduce(function(a,r){ return a + num_(r['実質売上']); }, 0),
     orders:  sales.reduce(function(a,r){ return a + num_(r['注文件数']); }, 0),
-    units:   sales.reduce(function(a,r){ return a + num_(r['出荷商品数']); }, 0)
+    units:   sales.reduce(function(a,r){ return a + num_(r['出荷商品数']); }, 0),
+    profit:  sales.reduce(function(a,r){ return a + num_(r['総税抜利益']); }, 0)
   };
+  // 利益率（累計）
+  res.profitRate = res.revenue ? (res.profit / res.revenue * 100) : 0;
   // 在庫合計は「商品状態」の「現在在庫数」の合計とする
   var stateRows = readAll_(SH.STATE);
   res.stockTotal = stateRows.reduce(function(a,r){ return a + num_(r['現在在庫数']); }, 0);

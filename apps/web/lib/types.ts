@@ -13,20 +13,29 @@ export type TimePoint = { date: string; value: number }
 // Dashboard
 export type DashboardKPI = {
   revenue: number
-  orderCount: number
-  shippedUnits: number
-  aov: number
-  buyboxRateWeighted: number
-  totalStock: number
-  totalRecommendedOrderQty: number
-  totalDemandForecast: number
+  profit: number
+  profitRate: number
+  orders: number
+  orderCount?: number // 互換性のため残す
+  shippedUnits?: number // 互換性のため残す
+  aov?: number // 互換性のため残す
+  buyboxRateWeighted?: number // 互換性のため残す
+  stockTotal: number
+  totalStock?: number // 互換性のため残す
+  totalRecommendedOrderQty?: number
+  totalDemandForecast?: number
+  periodFrom?: string
+  periodTo?: string
 }
 
 export type DashboardSeries = {
   revenue?: TimePoint[]
+  profit?: TimePoint[]
+  profitRate?: TimePoint[]
   units?: TimePoint[]
   buyboxRate?: TimePoint[]
   stock?: TimePoint[]
+  orders90d?: TimePoint[]
 }
 
 export type DashboardResponse = { kpi: DashboardKPI; series?: Partial<DashboardSeries> } | ApiError

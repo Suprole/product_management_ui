@@ -18,49 +18,61 @@ export async function KPICards() {
     return null
   }
   const { kpi } = data
-  const orderCount = (kpi as any).orderCount ?? (kpi as any).orders ?? 0
-  const totalStock = (kpi as any).totalStock ?? (kpi as any).stockTotal ?? 0
+  const orderCount = (kpi as any).orders ?? (kpi as any).orderCount ?? 0
+  const totalStock = (kpi as any).stockTotal ?? (kpi as any).totalStock ?? 0
+  const profit = (kpi as any).profit ?? 0
+  const profitRate = (kpi as any).profitRate ?? 0
+  
+  // 期間表示用
+  const periodText = kpi.periodFrom && kpi.periodTo 
+    ? `${kpi.periodFrom} ～ ${kpi.periodTo}` 
+    : '累計'
 
   const kpis = [
     {
-      title: "総売上",
-      value: formatJPY(kpi.revenue),
+      title: "総売上（累計）",
+      value: formatJPY(kpi.revenue ?? 0),
+      period: periodText,
       change: "",
       trend: "up" as const,
       icon: DollarSign,
       color: "text-chart-1",
     },
     {
-      title: "注文件数",
+      title: "総利益（累計）",
+      value: formatJPY(profit),
+      period: periodText,
+      change: "",
+      trend: profit >= 0 ? "up" as const : "down" as const,
+      icon: TrendingUp,
+      color: profit >= 0 ? "text-green-500" : "text-red-500",
+    },
+    {
+      title: "利益率（累計）",
+      value: `${profitRate.toFixed(1)}%`,
+      period: periodText,
+      change: "",
+      trend: profitRate >= 0 ? "up" as const : "down" as const,
+      icon: Percent,
+      color: profitRate >= 0 ? "text-green-500" : "text-red-500",
+    },
+    {
+      title: "注文件数（累計）",
       value: String(orderCount),
+      period: periodText,
       change: "",
       trend: "up" as const,
       icon: ShoppingCart,
       color: "text-chart-2",
     },
     {
-      title: "平均注文単価",
-      value: formatJPY(kpi.aov),
-      change: "",
-      trend: "up" as const,
-      icon: Percent,
-      color: "text-chart-3",
-    },
-    {
       title: "在庫合計",
       value: String(totalStock),
+      period: "現在",
       change: "",
       trend: "up" as const,
       icon: Package,
       color: "text-chart-5",
-    },
-    {
-      title: "加重カート率",
-      value: `${(kpi.buyboxRateWeighted * 100).toFixed(1)}%`,
-      change: "",
-      trend: "up" as const,
-      icon: TrendingUp,
-      color: "text-chart-4",
     },
   ]
 
@@ -74,15 +86,15 @@ export async function KPICards() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{kpi.value}</div>
-            <div className="flex items-center gap-1 mt-1">
-              {kpi.trend === "up" ? (
-                <TrendingUp className="h-3 w-3 text-success" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-destructive" />
-              )}
-              <span className={`text-xs ${kpi.trend === "up" ? "text-success" : "text-destructive"}`}>
-                {kpi.change}
-              </span>
+            <div className="flex items-center justify-between gap-1 mt-1">
+              <span className="text-xs text-muted-foreground">{kpi.period}</span>
+              <div className="flex items-center gap-1">
+                {kpi.trend === "up" ? (
+                  <TrendingUp className="h-3 w-3 text-success" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-destructive" />
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
