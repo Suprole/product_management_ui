@@ -5,10 +5,13 @@ import Link from "next/link"
 import { ProductSalesChart } from "./product-sales-chart"
 import { ProductInventoryChart } from "./product-inventory-chart"
 import { ProductCartWinChart } from "./product-cart-win-chart"
-import { getServerApiBaseUrl } from "@/lib/api-url"
+import { headers } from "next/headers"
 
 export async function ProductDetailView({ sku }: { sku: string }) {
-  const base = await getServerApiBaseUrl()
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
   const res = await fetch(`${base}/api/gas/product/${encodeURIComponent(sku)}`, { cache: 'no-store' })
   const data = await res.json()
   if (!data || data.error) {

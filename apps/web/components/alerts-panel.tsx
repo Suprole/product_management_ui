@@ -1,9 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertTriangle, TrendingDown, Package } from "lucide-react"
-import { getServerApiBaseUrl } from "@/lib/api-url"
+import { headers } from "next/headers"
 
 export async function AlertsPanel() {
-  const base = await getServerApiBaseUrl()
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
   // products から集計: 推奨発注数>0, 在庫=0, 利益<0
   // 全期間のデータを取得
   const res = await fetch(`${base}/api/gas/products?from=2000-01-01`, { cache: 'no-store' })

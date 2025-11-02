@@ -1,14 +1,17 @@
 import { TrendingUp, TrendingDown, DollarSign, Package, ShoppingCart, Percent } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardResponse } from "@/lib/types"
-import { getServerApiBaseUrl } from "@/lib/api-url"
+import { headers } from "next/headers"
 
 function formatJPY(n: number) {
   return `¥${Math.round(n).toLocaleString()}`
 }
 
 export async function KPICards() {
-  const base = await getServerApiBaseUrl()
+  const h = await headers()
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
+  const base = `${proto}://${host}`
   
   try {
     const res = await fetch(`${base}/api/gas/dashboard`, { cache: 'no-store' })

@@ -2,9 +2,6 @@ import { Suspense } from 'react'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { MastersView } from '@/components/masters-view'
 
-// 動的レンダリングを強制
-export const dynamic = 'force-dynamic'
-
 export const metadata = {
   title: 'マスタ閲覧 | 商品管理システム',
   description: '商品マスタと仕入れマスタの統合ビュー',

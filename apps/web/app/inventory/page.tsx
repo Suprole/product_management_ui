@@ -1,9 +1,6 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { InventoryManagementView } from "@/components/inventory-management-view"
 
-// 動的レンダリングを強制
-export const dynamic = 'force-dynamic'
-
 export default function InventoryPage() {
   return (
     <div className="min-h-screen bg-background">
