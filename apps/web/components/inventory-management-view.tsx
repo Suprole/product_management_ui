@@ -127,7 +127,7 @@ export async function InventoryManagementView() {
               className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
             >
               <div>
-                <p className="font-medium">{product.productName}</p>
+                <p className="font-medium">{product.name || product.productName || ''}</p>
                 <p className="text-sm text-muted-foreground">{product.sku}</p>
               </div>
               <div className="text-right">
