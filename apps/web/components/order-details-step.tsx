@@ -7,6 +7,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { ChevronLeft, AlertCircle, AlertTriangle } from 'lucide-react'
 import type { ProductSearchResult, Order } from '@/lib/types'
 
@@ -23,6 +33,7 @@ export function OrderDetailsStep({ product, onComplete, onBack }: OrderDetailsSt
   const [error, setError] = useState<string | null>(null)
   const [existingOrders, setExistingOrders] = useState<Order[]>([])
   const [isCheckingOrders, setIsCheckingOrders] = useState(true)
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
   
   // 計算値
   const setCountNum = parseInt(setCount) || 0
@@ -84,15 +95,31 @@ export function OrderDetailsStep({ product, onComplete, onBack }: OrderDetailsSt
     }
   }, [setCountNum, product.minLot])
   
-  const handleNext = () => {
-    if (error) return
-    if (setCountNum <= 0) return
-    
+  const proceedToNext = () => {
     onComplete({
       setCount: setCountNum,
       taxRate: taxRateNum / 100, // パーセントを小数に変換
       remarks,
     })
+  }
+  
+  const handleNext = () => {
+    if (error) return
+    if (setCountNum <= 0) return
+    
+    // 依頼中の発注がある場合は確認ダイアログを表示
+    if (existingOrders.length > 0) {
+      setShowDuplicateDialog(true)
+      return
+    }
+    
+    // 重複がない場合は直接次へ
+    proceedToNext()
+  }
+  
+  const handleConfirmDuplicate = () => {
+    setShowDuplicateDialog(false)
+    proceedToNext()
   }
   
   return (
@@ -282,6 +309,62 @@ export function OrderDetailsStep({ product, onComplete, onBack }: OrderDetailsSt
           次へ（確認）
         </Button>
       </div>
+      
+      {/* 重複発注確認ダイアログ */}
+      <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              依頼中の発注があります
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="text-base">
+                この商品には既に依頼中の発注が<strong className="text-foreground">{existingOrders.length}件</strong>あります。
+              </p>
+              
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {existingOrders.map((order) => (
+                  <div
+                    key={order.po_id}
+                    className="p-3 bg-muted rounded-lg text-sm border"
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div>
+                        <p className="font-medium text-foreground">PO番号: {order.po_id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          発注日: {order.orderDate}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-foreground">{order.quantity}個</p>
+                        <p className="text-xs text-muted-foreground">
+                          ({order.setCount}セット)
+                        </p>
+                      </div>
+                    </div>
+                    {order.remarks && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        備考: {order.remarks}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <p className="text-base font-medium text-foreground pt-2">
+                それでも新しい発注を作成しますか？
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDuplicate} className="bg-yellow-600 hover:bg-yellow-700">
+              発注を続行する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
