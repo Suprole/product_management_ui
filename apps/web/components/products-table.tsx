@@ -209,11 +209,23 @@ export function ProductsTable() {
               {filteredProducts.map((product) => (
                 <TableRow key={product.sku} className="border-border hover:bg-muted/50">
                   <TableCell className="font-mono text-sm">
-                    <Link href={`/products/${product.sku}`} className="hover:underline text-blue-500">
+                    <Link 
+                      href={`/products/${product.sku}`} 
+                      className="hover:underline text-blue-500"
+                      prefetch={true}
+                    >
                       {product.sku}
                     </Link>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">{product.productName}</TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    <Link 
+                      href={`/products/${product.sku}`} 
+                      className="hover:text-blue-500 transition-colors"
+                      prefetch={true}
+                    >
+                      {product.productName}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-right">
                     <span className={product.currentStock === 0 ? "text-destructive font-semibold" : ""}>
                       {product.currentStock}

@@ -147,6 +147,7 @@ export function InventoryManagementView() {
                 key={p.sku}
                 href={`/products/${p.sku}`}
                 className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent transition-colors"
+                prefetch={true}
               >
                 <div className="flex items-center gap-4">
                   <Badge
@@ -178,6 +179,7 @@ export function InventoryManagementView() {
               key={product.sku}
               href={`/products/${product.sku}`}
               className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
+              prefetch={true}
             >
               <div>
                 <p className="font-medium">{product.name || product.productName || ''}</p>

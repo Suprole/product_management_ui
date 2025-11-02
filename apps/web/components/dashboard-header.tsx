@@ -69,9 +69,9 @@ export function DashboardHeader() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">最終更新: 2025/10/20</div>
-          </div>
+          </div> */}
         </div>
       </div>
     </header>

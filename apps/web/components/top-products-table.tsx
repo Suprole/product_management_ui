@@ -54,11 +54,23 @@ export async function TopProductsTable() {
             {topProducts.map((product) => (
               <TableRow key={product.sku} className="border-border hover:bg-muted/50">
                 <TableCell className="font-mono text-sm">
-                  <Link href={`/products/${product.sku}`} className="hover:underline text-blue-500">
+                  <Link 
+                    href={`/products/${product.sku}`} 
+                    className="hover:underline text-blue-500"
+                    prefetch={true}
+                  >
                     {product.sku}
                   </Link>
                 </TableCell>
-                <TableCell className="max-w-xs truncate">{product.name}</TableCell>
+                <TableCell className="max-w-xs truncate">
+                  <Link 
+                    href={`/products/${product.sku}`} 
+                    className="hover:text-blue-500 transition-colors"
+                    prefetch={true}
+                  >
+                    {product.name}
+                  </Link>
+                </TableCell>
                 <TableCell>{product.orders}</TableCell>
                 <TableCell className="text-right">¥{Math.round(product.revenue).toLocaleString()}</TableCell>
                 <TableCell className="text-right font-semibold">
