@@ -1,15 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProductSearchStep } from '@/components/product-search-step'
 import { OrderDetailsStep } from '@/components/order-details-step'
 import { OrderConfirmStep } from '@/components/order-confirm-step'
 import type { ProductSearchResult } from '@/lib/types'
+import { Loader2 } from 'lucide-react'
 
 type Step = 'search' | 'details' | 'confirm'
 
 export function OrderCreateView() {
+  const searchParams = useSearchParams()
+  const skuFromUrl = searchParams.get('sku')
+  
   const [currentStep, setCurrentStep] = useState<Step>('search')
   const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null)
   const [orderData, setOrderData] = useState<{
@@ -17,6 +22,44 @@ export function OrderCreateView() {
     taxRate: number
     remarks: string
   } | null>(null)
+  const [isAutoLoading, setIsAutoLoading] = useState(false)
+  
+  // URLパラメータからSKUが指定されている場合は自動検索
+  useEffect(() => {
+    if (!skuFromUrl) return
+    
+    const autoLoadProduct = async () => {
+      setIsAutoLoading(true)
+      try {
+        const params = new URLSearchParams({ sku: skuFromUrl })
+        const res = await fetch(`/api/gas/products/search?${params.toString()}`)
+        
+        if (!res.ok) {
+          throw new Error('商品検索に失敗しました')
+        }
+        
+        const data = await res.json()
+        
+        if ('error' in data) {
+          console.error('商品検索エラー:', data.error)
+          return
+        }
+        
+        if (data.items && data.items.length > 0) {
+          // 最初の商品を自動選択
+          const product = data.items[0]
+          setSelectedProduct(product)
+          setCurrentStep('details')
+        }
+      } catch (err) {
+        console.error('商品の自動読み込みに失敗しました:', err)
+      } finally {
+        setIsAutoLoading(false)
+      }
+    }
+    
+    autoLoadProduct()
+  }, [skuFromUrl])
   
   // ステップ1: 商品検索・選択
   const handleProductSelect = (product: ProductSearchResult) => {
@@ -44,6 +87,23 @@ export function OrderCreateView() {
       setCurrentStep('search')
       setSelectedProduct(null)
     }
+  }
+  
+  // 自動読み込み中の表示
+  if (isAutoLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-lg font-medium">商品情報を読み込んでいます...</p>
+              <p className="text-sm text-muted-foreground">SKU: {skuFromUrl}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
   
   return (

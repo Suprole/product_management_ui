@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Package, TrendingUp, ShoppingCart, Star, Loader2 } from "lucide-react"
 import Link from "next/link"
@@ -235,11 +236,22 @@ export function ProductDetailView({ sku }: { sku: string }) {
             SKU: {product.sku} | ASIN: {product.asin}
           </p>
         </div>
-        <Badge
-          variant={product.currentStock === 0 ? "destructive" : product.currentStock < 20 ? "secondary" : "default"}
-        >
-          {product.currentStock === 0 ? "在庫切れ" : product.currentStock < 20 ? "在庫不足" : "在庫あり"}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge
+            variant={product.currentStock === 0 ? "destructive" : product.currentStock < 20 ? "secondary" : "default"}
+          >
+            {product.currentStock === 0 ? "在庫切れ" : product.currentStock < 20 ? "在庫不足" : "在庫あり"}
+          </Badge>
+          <Link href={`/orders/create?sku=${product.sku}`}>
+            <Button 
+              size="default" 
+              className="flex items-center gap-2"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              この商品を発注する
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

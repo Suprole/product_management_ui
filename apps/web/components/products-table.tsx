@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, ArrowUpDown, Loader2 } from "lucide-react"
+import { Search, ArrowUpDown, Loader2, ShoppingCart } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 // import from API instead of mock data
 import Link from "next/link"
@@ -104,6 +104,7 @@ export function ProductsTable() {
                   <TableHead className="text-muted-foreground text-right">利益率</TableHead>
                   <TableHead className="text-muted-foreground text-right">注文数</TableHead>
                   <TableHead className="text-muted-foreground">状態</TableHead>
+                  <TableHead className="text-muted-foreground">アクション</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,6 +118,7 @@ export function ProductsTable() {
                     <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -203,6 +205,7 @@ export function ProductsTable() {
                   </Button>
                 </TableHead>
                 <TableHead className="text-muted-foreground">状態</TableHead>
+                <TableHead className="text-muted-foreground">アクション</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -263,6 +266,18 @@ export function ProductsTable() {
                         正常
                       </Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/orders/create?sku=${product.sku}`}>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        <ShoppingCart className="h-3.5 w-3.5" />
+                        発注
+                      </Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, TrendingUp, AlertCircle, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AlertTriangle, Package, TrendingUp, AlertCircle, Loader2, ShoppingCart } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { InventoryChart } from "./inventory-chart"
@@ -143,13 +144,15 @@ export function InventoryManagementView() {
             .filter((p) => (p.stock ?? p.currentStock ?? 0) === 0 || (p.stock ?? p.currentStock ?? 0) < 20 || (p.stock ?? p.currentStock ?? 0) > 150)
             .slice(0, 10)
             .map((p) => (
-              <Link
+              <div
                 key={p.sku}
-                href={`/products/${p.sku}`}
                 className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent transition-colors"
-                prefetch={true}
               >
-                <div className="flex items-center gap-4">
+                <Link
+                  href={`/products/${p.sku}`}
+                  className="flex items-center gap-4 flex-1"
+                  prefetch={true}
+                >
                   <Badge
                     variant={(p.stock ?? p.currentStock ?? 0) === 0 ? "destructive" : (p.stock ?? p.currentStock ?? 0) < 20 ? "secondary" : "default"}
                   >
@@ -159,14 +162,26 @@ export function InventoryManagementView() {
                     <p className="font-medium">{p.name || p.productName || ''}</p>
                     <p className="text-sm text-muted-foreground">{p.sku}</p>
                   </div>
+                </Link>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="font-bold">現在在庫: {(p.stock ?? p.currentStock ?? 0)}個</p>
+                    {(p.recommendedOrderQty ?? 0) > 0 && (
+                      <p className="text-sm text-green-500">推奨発注: {p.recommendedOrderQty}個</p>
+                    )}
+                  </div>
+                  <Link href={`/orders/create?sku=${p.sku}`}>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      発注
+                    </Button>
+                  </Link>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold">現在在庫: {(p.stock ?? p.currentStock ?? 0)}個</p>
-                  {(p.recommendedOrderQty ?? 0) > 0 && (
-                    <p className="text-sm text-green-500">推奨発注: {p.recommendedOrderQty}個</p>
-                  )}
-                </div>
-              </Link>
+              </div>
             ))}
         </div>
       </Card>
@@ -175,30 +190,46 @@ export function InventoryManagementView() {
         <h3 className="text-lg font-semibold mb-4">全商品在庫状況</h3>
         <div className="space-y-2">
           {products.map((product) => (
-            <Link
+            <div
               key={product.sku}
-              href={`/products/${product.sku}`}
               className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-              prefetch={true}
             >
-              <div>
-                <p className="font-medium">{product.name || product.productName || ''}</p>
-                <p className="text-sm text-muted-foreground">{product.sku}</p>
+              <Link
+                href={`/products/${product.sku}`}
+                className="flex-1"
+                prefetch={true}
+              >
+                <div>
+                  <p className="font-medium">{product.name || product.productName || ''}</p>
+                  <p className="text-sm text-muted-foreground">{product.sku}</p>
+                </div>
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p
+                    className={`font-bold ${
+                      product.currentStock === 0
+                        ? "text-red-500"
+                        : product.currentStock < 20
+                          ? "text-yellow-500"
+                          : "text-green-500"
+                    }`}
+                  >
+                    {product.currentStock}個
+                  </p>
+                </div>
+                <Link href={`/orders/create?sku=${product.sku}`}>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex items-center gap-1"
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    発注
+                  </Button>
+                </Link>
               </div>
-              <div className="text-right">
-                <p
-                  className={`font-bold ${
-                    product.currentStock === 0
-                      ? "text-red-500"
-                      : product.currentStock < 20
-                        ? "text-yellow-500"
-                        : "text-green-500"
-                  }`}
-                >
-                  {product.currentStock}個
-                </p>
-              </div>
-            </Link>
+            </div>
           ))}
         </div>
       </Card>
