@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ChevronLeft, AlertCircle } from 'lucide-react'
-import type { ProductSearchResult } from '@/lib/types'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ChevronLeft, AlertCircle, AlertTriangle } from 'lucide-react'
+import type { ProductSearchResult, Order } from '@/lib/types'
 
 interface OrderDetailsStepProps {
   product: ProductSearchResult
@@ -21,6 +21,8 @@ export function OrderDetailsStep({ product, onComplete, onBack }: OrderDetailsSt
   const [taxRate, setTaxRate] = useState('10')
   const [remarks, setRemarks] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [existingOrders, setExistingOrders] = useState<Order[]>([])
+  const [isCheckingOrders, setIsCheckingOrders] = useState(true)
   
   // 計算値
   const setCountNum = parseInt(setCount) || 0
@@ -29,6 +31,45 @@ export function OrderDetailsStep({ product, onComplete, onBack }: OrderDetailsSt
   const subtotal = product.unitPrice * quantity
   const tax = subtotal * (taxRateNum / 100)
   const total = subtotal + tax
+  
+  // 既存の依頼中発注をチェック
+  useEffect(() => {
+    const checkExistingOrders = async () => {
+      setIsCheckingOrders(true)
+      try {
+        const params = new URLSearchParams({
+          sku: product.sku,
+          statuses: 'sup_依頼中',
+        })
+        const res = await fetch(`/api/gas/orders?${params.toString()}`)
+        
+        if (!res.ok) {
+          console.error('既存発注の取得に失敗しました')
+          return
+        }
+        
+        const data = await res.json()
+        
+        if ('error' in data) {
+          console.error('既存発注の取得エラー:', data.error)
+          return
+        }
+        
+        // 依頼中の発注のみをフィルタ
+        const pendingOrders = (data.items || []).filter(
+          (order: Order) => order.status === 'sup_依頼中'
+        )
+        
+        setExistingOrders(pendingOrders)
+      } catch (err) {
+        console.error('既存発注のチェックに失敗しました:', err)
+      } finally {
+        setIsCheckingOrders(false)
+      }
+    }
+    
+    checkExistingOrders()
+  }, [product.sku])
   
   // 最小ロットチェック
   useEffect(() => {
@@ -98,6 +139,50 @@ export function OrderDetailsStep({ product, onComplete, onBack }: OrderDetailsSt
           </div>
         </CardContent>
       </Card>
+      
+      {/* 既存の依頼中発注アラート */}
+      {!isCheckingOrders && existingOrders.length > 0 && (
+        <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+          <AlertTitle className="text-yellow-900 dark:text-yellow-100 font-semibold">
+            依頼中の発注があります
+          </AlertTitle>
+          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            <p className="mb-2">
+              この商品には既に依頼中の発注が{existingOrders.length}件あります。
+              重複発注にご注意ください。
+            </p>
+            <div className="space-y-2 mt-3">
+              {existingOrders.map((order) => (
+                <div
+                  key={order.po_id}
+                  className="p-2 bg-white dark:bg-gray-900 rounded border border-yellow-200 dark:border-yellow-800 text-sm"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">PO番号: {order.po_id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        発注日: {order.orderDate}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{order.quantity}個</p>
+                      <p className="text-xs text-muted-foreground">
+                        ({order.setCount}セット)
+                      </p>
+                    </div>
+                  </div>
+                  {order.remarks && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      備考: {order.remarks}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       
       {/* 発注数量入力 */}
       <Card>
