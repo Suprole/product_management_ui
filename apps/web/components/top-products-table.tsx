@@ -4,13 +4,10 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 import Link from "next/link"
 import { ProductsResponse } from "@/lib/types"
-import { headers } from "next/headers"
+import { getServerApiBaseUrl } from "@/lib/api-url"
 
 export async function TopProductsTable() {
-  const h = await headers()
-  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
-  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
-  const base = `${proto}://${host}`
+  const base = await getServerApiBaseUrl()
   // 全期間のデータを取得
   const res = await fetch(`${base}/api/gas/products?from=2000-01-01&sort=revenue&order=desc`, { cache: 'no-store' })
   const data = (await res.json()) as ProductsResponse
