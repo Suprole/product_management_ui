@@ -1,6 +1,9 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { ProductsTable } from "@/components/products-table"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-background">

@@ -2,6 +2,9 @@ import { Suspense } from 'react'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { OrdersView } from '@/components/orders-view'
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: '発注管理 | 商品管理システム',
   description: '発注一覧・ステータス管理・メール送信',

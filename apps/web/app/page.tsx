@@ -6,6 +6,9 @@ import { InventoryChart } from "@/components/inventory-chart"
 import { TopProductsTable } from "@/components/top-products-table"
 import { AlertsPanel } from "@/components/alerts-panel"
 
+// 動的レンダリングを強制（headers()とno-storeを使用しているため）
+export const dynamic = 'force-dynamic'
+
 export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">

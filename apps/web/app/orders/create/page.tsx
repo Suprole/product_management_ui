@@ -5,6 +5,9 @@ import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: '新規発注作成 | 商品管理システム',
   description: '新しい発注を作成',

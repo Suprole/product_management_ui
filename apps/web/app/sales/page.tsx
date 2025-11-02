@@ -1,6 +1,9 @@
 import { DashboardHeader } from "@/components/dashboard-header"
 import { SalesAnalyticsView } from "@/components/sales-analytics-view"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export default function SalesPage() {
   return (
     <div className="min-h-screen bg-background">
