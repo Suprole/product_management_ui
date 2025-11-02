@@ -33,6 +33,7 @@ export type DashboardSeries = {
   profit?: TimePoint[]
   profitRate?: TimePoint[]
   units?: TimePoint[]
+  orders?: TimePoint[]
   buyboxRate?: TimePoint[]
   stock?: TimePoint[]
   orders90d?: TimePoint[]
@@ -87,6 +88,9 @@ export type ProductDetailResponse =
       name: string
       asin: string
       category: string
+      rating?: string | null
+      periodFrom?: string
+      periodTo?: string
       kpis: ProductDetailKPI
       series: ProductDetailSeries
     }

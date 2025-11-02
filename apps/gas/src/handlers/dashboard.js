@@ -31,6 +31,7 @@ function handleDashboard_(e) {
     out.series.profit = salesDaily.map(function(x){ return { date: x.date, value: x.profit }; });
     out.series.profitRate = salesDaily.map(function(x){ return { date: x.date, value: x.profitRate }; });
     out.series.units   = salesDaily.map(function(x){ return { date: x.date, value: x.units }; });
+    out.series.orders  = salesDaily.map(function(x){ return { date: x.date, value: x.orders }; });
   } catch (err) {
     out._seriesRevenueError = String(err);
   }

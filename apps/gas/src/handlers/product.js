@@ -21,6 +21,9 @@ function handleProductBySku_(e) {
     name: rows[0].name,
     asin: rows[0].asin,
     category: rows[0].category, // will be overwritten by state if provided
+    rating: rows[0].rating || null,
+    periodFrom: p.from,
+    periodTo: p.to,
     kpis: {
       units: head.units, revenue: head.revenue,
       recommendedOrderQty: rows[0].recommendedOrderQty,
@@ -53,7 +56,7 @@ function handleProductBySku_(e) {
     // no-op
   }
 
-  // 累計利益・利益率
+  // 利益・利益率
   out.totalProfit = head.profit;
   out.profitRate = head.revenue ? (head.profit / head.revenue * 100) : 0;
 

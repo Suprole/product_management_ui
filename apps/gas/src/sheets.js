@@ -39,7 +39,7 @@ function readDashboard_(from, to) {
     units:   sales.reduce(function(a,r){ return a + num_(r['出荷商品数']); }, 0),
     profit:  sales.reduce(function(a,r){ return a + num_(r['総税抜利益']); }, 0)
   };
-  // 利益率（累計）
+  // 利益率
   res.profitRate = res.revenue ? (res.profit / res.revenue * 100) : 0;
   // 在庫合計は「商品状態」の「現在在庫数」の合計とする
   var stateRows = readAll_(SH.STATE);
@@ -78,6 +78,7 @@ function joinMaster_(rowsBySku) {
     x.asin = m['ASIN'] || '';
     x.name = m['商品名'] || '';
     x.category = m['カテゴリ'] || '';
+    x.rating = m['商品評価'] ? String(m['商品評価']) : null;
   });
   return rowsBySku;
 }

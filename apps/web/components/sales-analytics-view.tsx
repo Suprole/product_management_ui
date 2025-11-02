@@ -1,9 +1,32 @@
-import { Card } from "@/components/ui/card"
-import { TrendingUp, TrendingDown, DollarSign } from "lucide-react"
-import Link from "next/link"
-import { SalesChart } from "./sales-chart"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DollarSign, TrendingUp, Percent } from "lucide-react"
 import { headers } from "next/headers"
-import { DashboardResponse, ProductsResponse } from "@/lib/types"
+import { DashboardResponse } from "@/lib/types"
+import { SalesChartByPeriod } from "./sales-chart-by-period"
+
+// 期間計算ヘルパー
+function formatDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getDateRange(daysAgo: number | null): { from?: string; to?: string } {
+  const today = new Date()
+  const to = formatDate(today)
+  
+  if (daysAgo === null) {
+    // 全期間: 十分に古い日付を指定（スプレッドシートのデータ開始より前）
+    return { from: '2020-01-01', to }
+  }
+  
+  const fromDate = new Date(today)
+  fromDate.setDate(today.getDate() - daysAgo)
+  const from = formatDate(fromDate)
+  
+  return { from, to }
+}
 
 export async function SalesAnalyticsView() {
   const h = await headers()
@@ -11,160 +34,152 @@ export async function SalesAnalyticsView() {
   const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
   const base = `${proto}://${host}`
 
-  const [dashRes, prodRes] = await Promise.all([
-    fetch(`${base}/api/gas/dashboard`, { cache: 'no-store' }),
-    fetch(`${base}/api/gas/products`, { cache: 'no-store' }),
-  ])
-  const dash = (await dashRes.json()) as DashboardResponse
-  const prod = (await prodRes.json()) as ProductsResponse
-  const items = 'items' in prod ? prod.items : []
+  // 全期間、過去90日、過去30日のデータを並列取得
+  const periods = [
+    { label: '全期間', range: getDateRange(null) },
+    { label: '過去90日', range: getDateRange(90) },
+    { label: '過去30日', range: getDateRange(30) },
+  ]
 
-  const totalSales = 'kpi' in dash ? dash.kpi.revenue : items.reduce((s, it: any) => s + Number(it.revenue ?? it.totalSales ?? 0), 0)
-  const totalProfit = items.reduce((s, it: any) => s + Number(it.profit ?? it.totalProfit ?? 0), 0)
-  const averageProfitRate = totalSales ? (totalProfit / totalSales) * 100 : 0
+  const responses = await Promise.all(
+    periods.map(async (period) => {
+      const params = new URLSearchParams()
+      if (period.range.from) params.set('from', period.range.from)
+      if (period.range.to) params.set('to', period.range.to)
+      const url = `${base}/api/gas/dashboard?${params.toString()}`
+      const res = await fetch(url, { cache: 'no-store' })
+      const data = (await res.json()) as DashboardResponse
+      return { period: period.label, data }
+    })
+  )
 
-  const normalized = items.map((it: any) => ({
-    sku: it.sku,
-    productName: it.name || it.productName || '',
-    revenue: Number(it.revenue ?? it.totalSales ?? 0),
-    salesQuantity: Number(it.units ?? it.salesQuantity ?? 0),
-    totalProfit: Number(it.profit ?? it.totalProfit ?? 0),
-    profitRate: typeof it.profitRate === 'number' ? it.profitRate : (Number(it.revenue ?? 0) ? (Number(it.profit ?? 0) / Number(it.revenue ?? 1)) * 100 : 0),
-  }))
-  const analytics = {
-    topProducts: normalized.slice().sort((a, b) => b.revenue - a.revenue).slice(0, 10),
-    profitRanking: normalized.slice().sort((a, b) => b.totalProfit - a.totalProfit).slice(0, 10),
-    lowProfitProducts: normalized.filter((p) => p.profitRate < 5).sort((a, b) => a.profitRate - b.profitRate),
-  }
+  const periodData = responses.map(({ period, data }) => {
+    if (!('kpi' in data)) {
+      return {
+        period,
+        revenue: 0,
+        profit: 0,
+        profitRate: 0,
+        revenueSeriesData: [],
+        profitSeriesData: [],
+        profitRateSeriesData: [],
+        ordersSeriesData: [],
+      }
+    }
+    const profit = (data.kpi as any).profit ?? 0
+    const revenue = data.kpi.revenue ?? 0
+    const profitRate = revenue ? (profit / revenue * 100) : 0
+    
+    return {
+      period,
+      revenue,
+      profit,
+      profitRate,
+      revenueSeriesData: data.series?.revenue || [],
+      profitSeriesData: data.series?.profit || [],
+      profitRateSeriesData: data.series?.profitRate || [],
+      ordersSeriesData: data.series?.orders || [],
+      periodFrom: (data.kpi as any).periodFrom,
+      periodTo: (data.kpi as any).periodTo,
+    }
+  })
+
+  const formatJPY = (n: number) => `¥${Math.round(n).toLocaleString()}`
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-500/10 rounded-lg">
-              <DollarSign className="h-6 w-6 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">総売上</p>
-              <p className="text-2xl font-bold">¥{totalSales.toLocaleString()}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-500/10 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-green-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">総利益</p>
-              <p className="text-2xl font-bold text-green-500">¥{totalProfit.toLocaleString()}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-500/10 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">平均利益率</p>
-              <p className="text-2xl font-bold">{averageProfitRate.toFixed(2)}%</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <SalesChart />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-500" />
-            売上トップ10
-          </h3>
-          <div className="space-y-3">
-            {analytics.topProducts.map((product, index) => (
-              <Link
-                key={product.sku}
-                href={`/products/${product.sku}`}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-muted-foreground w-6">{index + 1}</span>
-                  <div>
-                    <p className="font-medium">{product.productName}</p>
-                    <p className="text-sm text-muted-foreground">{product.sku}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold">¥{Math.round(product.revenue).toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">{product.salesQuantity}個</p>
-                </div>
-              </Link>
+      {/* 総売上 - 期間別 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-blue-500" />
+            総売上
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {periodData.map((pd) => (
+              <div key={pd.period} className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">{pd.period}</p>
+                <p className="text-3xl font-bold text-blue-500">{formatJPY(pd.revenue)}</p>
+                {pd.periodFrom && pd.periodTo && (
+                  <p className="text-xs text-muted-foreground">
+                    {pd.periodFrom} ～ {pd.periodTo}
+                  </p>
+                )}
+              </div>
             ))}
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-yellow-500" />
-            利益トップ10
-          </h3>
-          <div className="space-y-3">
-            {analytics.profitRanking.map((product, index) => (
-              <Link
-                key={product.sku}
-                href={`/products/${product.sku}`}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-muted-foreground w-6">{index + 1}</span>
-                  <div>
-                    <p className="font-medium">{product.productName}</p>
-                    <p className="text-sm text-muted-foreground">{product.sku}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-green-500">¥{product.totalProfit.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">{product.profitRate.toFixed(1)}%</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <TrendingDown className="h-5 w-5 text-red-500" />
-          低利益率商品（5%未満）
-        </h3>
-        <div className="space-y-3">
-          {analytics.lowProfitProducts.map((product) => (
-            <Link
-              key={product.sku}
-              href={`/products/${product.sku}`}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-accent transition-colors"
-            >
-              <div>
-                <p className="font-medium">{product.productName}</p>
-                <p className="text-sm text-muted-foreground">{product.sku}</p>
-              </div>
-              <div className="text-right">
-                <p className={`font-bold ${product.totalProfit >= 0 ? "text-yellow-500" : "text-red-500"}`}>
-                  ¥{product.totalProfit.toLocaleString()}
-                </p>
-                <p className={`text-sm ${product.profitRate >= 0 ? "text-yellow-500" : "text-red-500"}`}>
-                  {product.profitRate.toFixed(2)}%
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        </CardContent>
       </Card>
+
+      {/* 総利益 - 期間別 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-500" />
+            総利益
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {periodData.map((pd) => (
+              <div key={pd.period} className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">{pd.period}</p>
+                <p className={`text-3xl font-bold ${pd.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {formatJPY(pd.profit)}
+                </p>
+                {pd.periodFrom && pd.periodTo && (
+                  <p className="text-xs text-muted-foreground">
+                    {pd.periodFrom} ～ {pd.periodTo}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 利益率 - 期間別 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Percent className="h-5 w-5 text-purple-500" />
+            利益率
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {periodData.map((pd) => (
+              <div key={pd.period} className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">{pd.period}</p>
+                <p className={`text-3xl font-bold ${pd.profitRate >= 0 ? 'text-purple-500' : 'text-red-500'}`}>
+                  {pd.profitRate.toFixed(2)}%
+                </p>
+                {pd.periodFrom && pd.periodTo && (
+                  <p className="text-xs text-muted-foreground">
+                    {pd.periodFrom} ～ {pd.periodTo}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 売上推移グラフ - 期間別 */}
+      <div className="grid grid-cols-1 gap-6">
+        {periodData.map((pd) => (
+          <SalesChartByPeriod 
+            key={pd.period}
+            period={pd.period}
+            revenueSeries={pd.revenueSeriesData}
+            profitSeries={pd.profitSeriesData}
+            profitRateSeries={pd.profitRateSeriesData}
+            ordersSeries={pd.ordersSeriesData}
+          />
+        ))}
+      </div>
     </div>
   )
 }

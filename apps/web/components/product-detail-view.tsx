@@ -23,6 +23,11 @@ export async function ProductDetailView({ sku }: { sku: string }) {
   }
   const kpis = data.kpis || {}
   const series = data.series || {}
+  const periodFrom = data.periodFrom || ''
+  const periodTo = data.periodTo || ''
+  const periodText = periodFrom && periodTo ? `${periodFrom} ～ ${periodTo}` : ''
+  const rating = data.rating || null
+  
   const product = {
     productName: data.name || '',
     sku: data.sku || sku,
@@ -35,8 +40,7 @@ export async function ProductDetailView({ sku }: { sku: string }) {
     cost: Math.round((data.cost ?? 0) || 0),
     totalProfit: Math.round((data.totalProfit ?? 0) || 0),
     profitRate: typeof data.profitRate === 'number' ? data.profitRate : ((kpis.revenue ? ((data.totalProfit ?? 0) / (kpis.revenue || 1)) * 100 : 0)),
-    averageRating: 0,
-    reviewCount: 0,
+    rating: rating,
     salesQuantity: Math.round(kpis.units ?? 0),
     unitProfit: Math.round((data.unitProfit ?? (kpis.revenue ? ((data.totalProfit ?? 0) / (kpis.units || 1)) : 0)) || 0),
   }
@@ -111,6 +115,9 @@ export async function ProductDetailView({ sku }: { sku: string }) {
             <div>
               <p className="text-sm text-muted-foreground">総売上</p>
               <p className="text-2xl font-bold">¥{product.totalSales.toLocaleString()}</p>
+              {periodText && (
+                <p className="text-xs text-muted-foreground mt-1">{periodText}</p>
+              )}
             </div>
           </div>
         </Card>
@@ -123,6 +130,9 @@ export async function ProductDetailView({ sku }: { sku: string }) {
             <div>
               <p className="text-sm text-muted-foreground">注文件数</p>
               <p className="text-2xl font-bold">{product.orderCount}</p>
+              {periodText && (
+                <p className="text-xs text-muted-foreground mt-1">{periodText}</p>
+              )}
             </div>
           </div>
         </Card>
@@ -134,8 +144,7 @@ export async function ProductDetailView({ sku }: { sku: string }) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">評価</p>
-              <p className="text-2xl font-bold">{product.averageRating.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground">({product.reviewCount}件)</p>
+              <p className="text-2xl font-bold">{product.rating || '評価なし'}</p>
             </div>
           </div>
         </Card>
