@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Suspense } from 'react'
 import { LoadingBar } from '@/components/loading-bar'
+import { SessionProvider } from '@/components/session-provider'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -22,11 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <Suspense fallback={null}>
-          <LoadingBar />
-        </Suspense>
-        {children}
-        <Analytics />
+        <SessionProvider>
+          <Suspense fallback={null}>
+            <LoadingBar />
+          </Suspense>
+          {children}
+          <Analytics />
+        </SessionProvider>
       </body>
     </html>
   )
