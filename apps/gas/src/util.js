@@ -57,4 +57,54 @@ function rangeInfoFromRows_(rows, dateKey) {
   return { count: c, min: min, max: max };
 }
 
+// ============================================================
+// 発注管理用ユーティリティ関数（Phase 1で追加）
+// ============================================================
+
+/**
+ * 日付文字列をDateオブジェクトに変換
+ * @param {string} str YYYY-MM-DD形式
+ * @return {Date|null}
+ */
+function parseDate_(str) {
+  if (!str) return null;
+  var match = String(str).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+}
+
+/**
+ * DateオブジェクトをYYYY-MM-DD形式に変換
+ * @param {Date} date
+ * @return {string}
+ */
+function formatDate_(date) {
+  if (!date || !(date instanceof Date)) return '';
+  if (isNaN(date.getTime())) return '';
+  return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy-MM-dd');
+}
+
+/**
+ * DateオブジェクトをYYYY-MM-DD HH:MM:SS形式に変換
+ * @param {Date} date
+ * @return {string}
+ */
+function formatDateTime_(date) {
+  if (!date || !(date instanceof Date)) return '';
+  if (isNaN(date.getTime())) return '';
+  return Utilities.formatDate(date, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm:ss');
+}
+
+/**
+ * 四捨五入
+ * @param {number} value
+ * @param {number} decimals 小数点以下桁数（デフォルト0）
+ * @return {number}
+ */
+function round_(value, decimals) {
+  decimals = decimals || 0;
+  var factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
 

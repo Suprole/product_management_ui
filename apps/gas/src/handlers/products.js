@@ -1,3 +1,16 @@
+/**
+ * 商品API ハンドラ
+ * - 既存の商品一覧API（handleProducts_）
+ * - Phase 4: 商品検索・マスタ結合ビュー（発注作成用）
+ */
+
+// ============================================================
+// 既存の商品一覧API
+// ============================================================
+
+/**
+ * 商品一覧取得（既存API）
+ */
 function handleProducts_(e) {
   var p = normalizeParams_(e.parameter || {});
   var key = 'products:' + p.from + ':' + p.to + ':' + p.grain;
@@ -81,4 +94,220 @@ function handleProducts_(e) {
   return json_(out);
 }
 
+// ============================================================
+// 商品検索（発注作成用）
+// ============================================================
 
+/**
+ * 商品検索（発注作成用）
+ * @param {Object} filters { asin?, productCode?, namePart?, sku?, brand? }
+ * @return {Array<Object>}
+ */
+function searchProducts_(filters) {
+  filters = filters || {};
+  
+  // 商品マスタ取得
+  var productSheet = openProductMasterSheet_();
+  var products = readSheetAsObjects_(productSheet);
+  
+  // 仕入れマスタ取得
+  var purchaseSheet = openPurchaseMasterSheet_();
+  var purchases = readSheetAsObjects_(purchaseSheet);
+  var purchaseMap = {};
+  purchases.forEach(function(p) {
+    var asin = String(p.ASIN || '');
+    if (asin) {
+      purchaseMap[asin] = p;
+    }
+  });
+  
+  // フィルタ適用
+  var results = products.filter(function(p) {
+    // 表示/非表示チェック（表示ONのみ）
+    var visible = p['表示/非表示'];
+    if (visible !== true && visible !== 'TRUE' && String(visible).toLowerCase() !== 'true') {
+      return false;
+    }
+    
+    // SKUフィルタ
+    if (filters.sku && String(p.SKU || '') !== filters.sku) {
+      return false;
+    }
+    
+    // ASINフィルタ
+    if (filters.asin && String(p.ASIN || '') !== filters.asin) {
+      return false;
+    }
+    
+    // 商品コードフィルタ
+    if (filters.productCode && String(p['商品コード'] || '') !== filters.productCode) {
+      return false;
+    }
+    
+    // 商品名部分一致フィルタ
+    if (filters.namePart) {
+      var keyword = String(filters.namePart).toLowerCase();
+      var name = String(p['商品名'] || '').toLowerCase();
+      if (name.indexOf(keyword) === -1) {
+        return false;
+      }
+    }
+    
+    // ブランドフィルタ
+    if (filters.brand && String(p['ブランド'] || '') !== filters.brand) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // 仕入れマスタと結合
+  results = results.map(function(p) {
+    var asin = String(p.ASIN || '');
+    var purchase = purchaseMap[asin] || {};
+    
+    return {
+      sku: String(p.SKU || ''),
+      asin: asin,
+      productCode: String(p['商品コード'] || ''),
+      name: String(p['商品名'] || ''),
+      brand: String(p['ブランド'] || ''),
+      // 仕入れマスタの情報
+      setSize: num_(purchase['セット個数']) || 1,
+      minLot: num_(purchase['最小ロット']) || 1,
+      purchasePrice: num_(purchase['仕入れ値（税抜/セット）']) || 0,
+      hazard: purchase['危険物'] === true || purchase['危険物'] === 'TRUE' || String(purchase['危険物']).toLowerCase() === 'true',
+      hasExpiry: purchase['消費期限要'] === true || purchase['消費期限要'] === 'TRUE' || String(purchase['消費期限要']).toLowerCase() === 'true',
+      // 計算値
+      unitPrice: purchase['仕入れ値（税抜/セット）'] && purchase['セット個数'] ? 
+        round_(num_(purchase['仕入れ値（税抜/セット）']) / num_(purchase['セット個数']), 2) : 0
+    };
+  });
+  
+  // 商品名でソート（昇順）
+  results.sort(function(a, b) {
+    if (a.name < b.name) return -1;
+    if (a.name > b.name) return 1;
+    return 0;
+  });
+  
+  return results;
+}
+
+/**
+ * GETハンドラ（商品検索）
+ */
+function handleSearchProducts_(e) {
+  var p = e.parameter || {};
+  
+  var filters = {
+    sku: p.sku || null,
+    asin: p.asin || null,
+    productCode: p.productCode || null,
+    namePart: p.q || p.namePart || null,
+    brand: p.brand || null
+  };
+  
+  var results = searchProducts_(filters);
+  
+  // 件数制限（オプション）
+  var limit = p.limit ? parseInt(p.limit, 10) : 0;
+  if (limit > 0 && results.length > limit) {
+    results = results.slice(0, limit);
+  }
+  
+  return json_({ items: results, total: results.length });
+}
+
+// ============================================================
+// マスタ結合ビュー
+// ============================================================
+
+/**
+ * マスタ結合ビュー取得
+ * @param {Object} filters
+ * @return {Array<Object>}
+ */
+function getMasterView_(filters) {
+  // searchProducts_と同じロジックを使用
+  return searchProducts_(filters);
+}
+
+/**
+ * GETハンドラ（マスタ結合ビュー）
+ */
+function handleGetMasterView_(e) {
+  // searchProducts_と同じハンドラ
+  return handleSearchProducts_(e);
+}
+
+// ============================================================
+// 商品サジェスト（高速検索用）
+// ============================================================
+
+/**
+ * 商品サジェスト（インクリメンタル検索用）
+ * @param {string} query 検索クエリ
+ * @param {number} limit 最大件数（デフォルト10）
+ * @return {Array<Object>}
+ */
+function suggestProducts_(query, limit) {
+  limit = limit || 10;
+  
+  if (!query || String(query).length < 2) {
+    return [];
+  }
+  
+  var keyword = String(query).toLowerCase();
+  
+  // 商品マスタから検索
+  var productSheet = openProductMasterSheet_();
+  var products = readSheetAsObjects_(productSheet);
+  
+  var results = [];
+  
+  for (var i = 0; i < products.length && results.length < limit; i++) {
+    var p = products[i];
+    
+    // 表示ONのみ
+    var visible = p['表示/非表示'];
+    if (visible !== true && visible !== 'TRUE' && String(visible).toLowerCase() !== 'true') {
+      continue;
+    }
+    
+    var sku = String(p.SKU || '').toLowerCase();
+    var asin = String(p.ASIN || '').toLowerCase();
+    var name = String(p['商品名'] || '').toLowerCase();
+    var code = String(p['商品コード'] || '').toLowerCase();
+    
+    // 部分一致チェック
+    if (sku.indexOf(keyword) >= 0 || 
+        asin.indexOf(keyword) >= 0 || 
+        name.indexOf(keyword) >= 0 || 
+        code.indexOf(keyword) >= 0) {
+      
+      results.push({
+        sku: String(p.SKU || ''),
+        asin: String(p.ASIN || ''),
+        productCode: String(p['商品コード'] || ''),
+        name: String(p['商品名'] || ''),
+        brand: String(p['ブランド'] || '')
+      });
+    }
+  }
+  
+  return results;
+}
+
+/**
+ * GETハンドラ（商品サジェスト）
+ */
+function handleSuggestProducts_(e) {
+  var p = e.parameter || {};
+  var query = p.q || '';
+  var limit = p.limit ? parseInt(p.limit, 10) : 10;
+  
+  var results = suggestProducts_(query, limit);
+  
+  return json_({ items: results, total: results.length });
+}

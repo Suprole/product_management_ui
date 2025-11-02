@@ -1,4 +1,5 @@
 // SS_ID は Script Properties に保存（SS_ID=<SpreadsheetId>）
+// SPREADSHEET_IDも同様に保存（発注管理用）
 var SH = {
   DAILY_SALES: '日次売上集計',
   SKU_SALES_DAILY: '商品別日次売上集計',
@@ -6,7 +7,10 @@ var SH = {
   STOCK_SKEW_DAILY: '商品別在庫日次集計',
   STOCK_GLOBAL_DAILY: '全体在庫日次集計',
   MASTER: '商品マスタ',
-  STATE: '商品状態'
+  STATE: '商品状態',
+  // 発注管理用シート
+  ORDERS: '発注管理',
+  PURCHASE_MASTER: '仕入れマスタ'
 };
 
 function open_() {
@@ -111,6 +115,104 @@ function joinState_(rowsBySku) {
     x.stateUpdatedAt = s.stateUpdatedAt || null;
   });
   return rowsBySku;
+}
+
+// ============================================================
+// 発注管理用シートユーティリティ（Phase 1で追加）
+// ============================================================
+
+/**
+ * 発注管理シートを開く
+ */
+function openOrdersSheet_() {
+  var sheet = open_().getSheetByName(SH.ORDERS);
+  if (!sheet) throw new Error('発注管理シートが見つかりません: ' + SH.ORDERS);
+  return sheet;
+}
+
+/**
+ * 商品マスタシートを開く
+ */
+function openProductMasterSheet_() {
+  var sheet = open_().getSheetByName(SH.MASTER);
+  if (!sheet) throw new Error('商品マスタシートが見つかりません: ' + SH.MASTER);
+  return sheet;
+}
+
+/**
+ * 仕入れマスタシートを開く
+ */
+function openPurchaseMasterSheet_() {
+  var sheet = open_().getSheetByName(SH.PURCHASE_MASTER);
+  if (!sheet) throw new Error('仕入れマスタシートが見つかりません: ' + SH.PURCHASE_MASTER);
+  return sheet;
+}
+
+/**
+ * シートの全データを列名付きオブジェクト配列で取得
+ * readAll_と同じだが、明示的な名前で提供
+ */
+function readSheetAsObjects_(sheet) {
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length === 0) return [];
+  
+  var headers = values[0];
+  var data = [];
+  
+  for (var i = 1; i < values.length; i++) {
+    var row = {};
+    for (var j = 0; j < headers.length; j++) {
+      row[String(headers[j])] = values[i][j];
+    }
+    data.push(row);
+  }
+  
+  return data;
+}
+
+/**
+ * 商品マスタをマップで取得（発注管理用）
+ */
+function getProductMasterMap_() {
+  var sheet = openProductMasterSheet_();
+  var products = readSheetAsObjects_(sheet);
+  var map = {};
+  
+  products.forEach(function(p) {
+    var sku = String(p.SKU || '');
+    if (sku) {
+      map[sku] = {
+        asin: String(p.ASIN || ''),
+        productCode: String(p['商品コード'] || ''),
+        name: String(p['商品名'] || ''),
+        brand: String(p['ブランド'] || '')
+      };
+    }
+  });
+  
+  return map;
+}
+
+/**
+ * 仕入れマスタから情報取得
+ */
+function getPurchaseInfo_(asin) {
+  var sheet = openPurchaseMasterSheet_();
+  var data = readSheetAsObjects_(sheet);
+  
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i].ASIN) === asin) {
+      return {
+        setSize: num_(data[i]['セット個数']) || 1,
+        minLot: num_(data[i]['最小ロット']) || 1,
+        purchasePrice: num_(data[i]['仕入れ値（税抜/セット）']) || 0,
+        hazard: data[i]['危険物'] === true || data[i]['危険物'] === 'TRUE',
+        hasExpiry: data[i]['消費期限要'] === true || data[i]['消費期限要'] === 'TRUE'
+      };
+    }
+  }
+  
+  return null;
 }
 
 

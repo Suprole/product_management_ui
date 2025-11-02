@@ -1,0 +1,207 @@
+'use client'
+
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import type { ProductSearchResult } from '@/lib/types'
+
+interface OrderConfirmStepProps {
+  product: ProductSearchResult
+  orderData: {
+    setCount: number
+    taxRate: number
+    remarks: string
+  }
+  onSuccess: () => void
+  onBack: () => void
+}
+
+export function OrderConfirmStep({ product, orderData, onSuccess, onBack }: OrderConfirmStepProps) {
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
+  
+  // 計算値
+  const quantity = orderData.setCount * product.setSize
+  const subtotal = product.unitPrice * quantity
+  const tax = subtotal * orderData.taxRate
+  const total = subtotal + tax
+  
+  const handleCreate = async () => {
+    setCreating(true)
+    setError(null)
+    
+    try {
+      const res = await fetch('/api/gas/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sku: product.sku,
+          setCount: orderData.setCount,
+          taxRate: orderData.taxRate,
+          seller: 'Suprole',
+          remarks: orderData.remarks || undefined,
+          createdBy: 'user@example.com', // TODO: 実際のユーザー情報を使用
+        }),
+      })
+      
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '発注作成に失敗しました')
+      }
+      
+      const data = await res.json()
+      
+      toast({
+        title: '発注作成完了',
+        description: `発注ID: ${data.po_id} が作成されました`,
+      })
+      
+      // 成功後、発注一覧へ遷移
+      setTimeout(() => {
+        onSuccess()
+      }, 1000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '発注作成に失敗しました')
+      toast({
+        title: 'エラー',
+        description: err instanceof Error ? err.message : '発注作成に失敗しました',
+        variant: 'destructive',
+      })
+    } finally {
+      setCreating(false)
+    }
+  }
+  
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>発注内容の確認</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* 商品情報 */}
+          <div>
+            <h4 className="font-semibold mb-3">商品情報</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">商品名:</span>
+                <p className="font-medium">{product.name}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">SKU:</span>
+                <p className="font-mono">{product.sku}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">ASIN:</span>
+                <p className="font-mono">{product.asin}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">ブランド:</span>
+                <p>{product.brand || '-'}</p>
+              </div>
+              {product.hazard && (
+                <div className="col-span-2">
+                  <Badge variant="destructive">危険物</Badge>
+                </div>
+              )}
+              {product.hasExpiry && (
+                <div className="col-span-2">
+                  <Badge variant="outline">消費期限管理が必要</Badge>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="border-t pt-6">
+            <h4 className="font-semibold mb-3">発注数量</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground">セット個数:</span>
+                <p>{product.setSize}個/セット</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">発注セット数:</span>
+                <p className="font-medium">{orderData.setCount}セット</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">発注数量（合計）:</span>
+                <p className="font-medium text-lg">{quantity}個</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t pt-6">
+            <h4 className="font-semibold mb-3">金額</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">単価（税抜/個）:</span>
+                <span>¥{product.unitPrice.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">税抜純売上高:</span>
+                <span className="font-medium">¥{subtotal.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  消費税（{(orderData.taxRate * 100).toFixed(0)}%）:
+                </span>
+                <span>¥{Math.round(tax).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t">
+                <span className="font-semibold">税込合計:</span>
+                <span className="font-bold text-xl">
+                  ¥{Math.round(total).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {orderData.remarks && (
+            <div className="border-t pt-6">
+              <h4 className="font-semibold mb-3">備考</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {orderData.remarks}
+              </p>
+            </div>
+          )}
+          
+          <div className="border-t pt-6">
+            <h4 className="font-semibold mb-3">初期ステータス</h4>
+            <Badge className="bg-blue-100 text-blue-800">Suprole依頼中</Badge>
+          </div>
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* ボタン */}
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onBack} disabled={creating}>
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          戻る
+        </Button>
+        <Button onClick={handleCreate} disabled={creating} className="flex-1">
+          {creating ? (
+            '作成中...'
+          ) : (
+            <>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              発注を作成
+            </>
+          )}
+        </Button>
+      </div>
+    </>
+  )
+}
+

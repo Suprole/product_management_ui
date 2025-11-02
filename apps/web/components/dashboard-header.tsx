@@ -50,6 +50,22 @@ export function DashboardHeader() {
               >
                 在庫管理
               </Link>
+              <Link
+                href="/orders"
+                className={`text-sm font-medium transition-colors ${
+                  pathname?.startsWith("/orders") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                発注管理
+              </Link>
+              <Link
+                href="/masters"
+                className={`text-sm font-medium transition-colors ${
+                  pathname === "/masters" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                マスタ閲覧
+              </Link>
             </nav>
           </div>
 

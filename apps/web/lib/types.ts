@@ -135,4 +135,144 @@ export type CartWinRate = {
   sessions?: number
 }
 
+// ============================================================
+// 発注管理 Types (Phase 6で追加)
+// ============================================================
+
+// Order Status
+export type OrderStatus =
+  | 'sup_依頼中'
+  | 'be_メーカー取寄中'
+  | 'be_納品手続完了'
+  | 'sup_受取完了'
+  | 'sup_fba出荷完了'
+  | '保留'
+  | '返品'
+
+// Order
+export type Order = {
+  po_id: string
+  sku: string
+  asin: string
+  productCode: string
+  productName: string
+  brand: string
+  orderDate: string // YYYY-MM-DD
+  seller: string
+  quantity: number // 個数
+  setCount: number // セット数
+  setSize: number // セット個数
+  unitPrice: number // 税抜単価/個
+  subtotal: number // 税抜純売上高
+  taxRate: number // 消費税率（小数: 0.1 = 10%）
+  invoiceNo: string
+  arrivalDate: string | null // YYYY-MM-DD
+  status: OrderStatus
+  remarks: string
+  createdBy: string
+  createdAt: string // YYYY-MM-DD HH:MM:SS
+  lastUpdatedBy: string
+  lastUpdatedAt: string // YYYY-MM-DD HH:MM:SS
+}
+
+export type OrdersResponse = { items: Order[]; total: number } | ApiError
+
+// Create Order Input
+export type CreateOrderInput = {
+  sku: string
+  setCount: number
+  taxRate?: number // デフォルト: 0.1
+  seller?: string // デフォルト: 'Suprole'
+  orderDate?: string // YYYY-MM-DD、未指定時は今日
+  remarks?: string
+  createdBy: string
+}
+
+// Update Order Input
+export type UpdateOrderInput = {
+  taxRate?: number
+  invoiceNo?: string
+  arrivalDate?: string // YYYY-MM-DD
+  remarks?: string
+  updatedBy: string
+}
+
+// Change Status Input
+export type ChangeStatusInput = {
+  newStatus: OrderStatus
+  updatedBy: string
+}
+
+// Send Mail Input
+export type SendMailInput = {
+  type: 'request' | 'delivery'
+  poIds: string[]
+}
+
+// Product Search Result (for order creation)
+export type ProductSearchResult = {
+  sku: string
+  asin: string
+  productCode: string
+  name: string
+  brand: string
+  setSize: number // セット個数
+  minLot: number // 最小ロット（セット単位）
+  purchasePrice: number // 仕入れ値（税抜/セット）
+  unitPrice: number // 単価（税抜/個）= purchasePrice / setSize
+  hazard: boolean // 危険物フラグ
+  hasExpiry: boolean // 消費期限要フラグ
+}
+
+export type ProductSearchResponse = { items: ProductSearchResult[]; total: number } | ApiError
+
+// Master View (商品マスタ + 仕入れマスタ結合)
+export type MasterItem = ProductSearchResult
+export type MasterViewResponse = { items: MasterItem[]; total: number } | ApiError
+
+// Order Filters (for list page)
+export type OrderFilters = {
+  po_id?: string
+  statuses?: OrderStatus[]
+  sku?: string
+  asin?: string
+  seller?: string
+  productName?: string
+  fromDate?: string // YYYY-MM-DD
+  toDate?: string // YYYY-MM-DD
+}
+
+// Status Transitions (ステータス遷移定義)
+export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  'sup_依頼中': ['be_メーカー取寄中', '保留', '返品'],
+  'be_メーカー取寄中': ['be_納品手続完了', '保留', '返品'],
+  'be_納品手続完了': ['sup_受取完了', '保留', '返品'],
+  'sup_受取完了': ['sup_fba出荷完了', '保留', '返品'],
+  'sup_fba出荷完了': ['保留', '返品'],
+  '保留': ['保留', '返品'],
+  '返品': [],
+}
+
+// ステータス表示名
+export const STATUS_LABELS: Record<OrderStatus, string> = {
+  'sup_依頼中': 'Suprole依頼中',
+  'be_メーカー取寄中': 'befree取寄中',
+  'be_納品手続完了': 'befree納品完了',
+  'sup_受取完了': 'Suprole受取完了',
+  'sup_fba出荷完了': 'FBA出荷完了',
+  '保留': '保留',
+  '返品': '返品',
+}
+
+// ステータスバッジの色
+export const STATUS_COLORS: Record<OrderStatus, string> = {
+  'sup_依頼中': 'bg-blue-100 text-blue-800',
+  'be_メーカー取寄中': 'bg-yellow-100 text-yellow-800',
+  'be_納品手続完了': 'bg-green-100 text-green-800',
+  'sup_受取完了': 'bg-purple-100 text-purple-800',
+  'sup_fba出荷完了': 'bg-indigo-100 text-indigo-800',
+  '保留': 'bg-gray-100 text-gray-800',
+  '返品': 'bg-red-100 text-red-800',
+}
+
 
