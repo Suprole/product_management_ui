@@ -9,6 +9,8 @@ function cacheGet_(key) { return CacheService.getScriptCache().get(key); }
 function cachePut_(key, value, seconds) { CacheService.getScriptCache().put(key, value, seconds || 60); }
 
 function normalizeParams_(param) {
+  // デフォルトは過去30日間
+  // 商品一覧など全期間が必要な場合は、呼び出し側で明示的に from を指定する
   var from = param.from || Utilities.formatDate(new Date(Date.now()-30*86400000), 'Asia/Tokyo', 'yyyy-MM-dd');
   var to   = param.to   || today_();
   var grain= (param.grain || 'day').toLowerCase();

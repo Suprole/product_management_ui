@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, ArrowUpDown } from "lucide-react"
+import { Search, ArrowUpDown, Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 // import from API instead of mock data
 import Link from "next/link"
 
@@ -22,25 +23,34 @@ type UIProduct = {
 
 export function ProductsTable() {
   const [products, setProducts] = useState<UIProduct[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [sortField, setSortField] = useState<string>("totalProfit")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
     const run = async () => {
-      const res = await fetch(`/api/gas/products`, { cache: 'no-store' })
-      const data = await res.json()
-      const items = Array.isArray(data?.items) ? data.items : []
-      const mapped: UIProduct[] = items.map((it: any) => ({
-        sku: it.sku,
-        productName: it.name || it.productName || '',
-        orderCount: it.orders ?? it.orderCount ?? 0,
-        currentStock: it.stock ?? it.currentStock ?? 0,
-        totalSales: Math.round(it.revenue ?? it.totalSales ?? 0),
-        totalProfit: Math.round(it.profit ?? it.totalProfit ?? 0),
-        profitRate: typeof it.profitRate === 'number' ? it.profitRate : ((it.revenue ? ((it.profit ?? 0) / (it.revenue || 1)) * 100 : 0)),
-      }))
-      setProducts(mapped)
+      try {
+        setIsLoading(true)
+        // 全期間のデータを取得するため、from=2000-01-01 を指定
+        const res = await fetch(`/api/gas/products?from=2000-01-01`, { cache: 'no-store' })
+        const data = await res.json()
+        const items = Array.isArray(data?.items) ? data.items : []
+        const mapped: UIProduct[] = items.map((it: any) => ({
+          sku: it.sku,
+          productName: it.name || it.productName || '',
+          orderCount: it.orders ?? it.orderCount ?? 0,
+          currentStock: it.stock ?? it.currentStock ?? 0,
+          totalSales: Math.round(it.revenue ?? it.totalSales ?? 0),
+          totalProfit: Math.round(it.profit ?? it.totalProfit ?? 0),
+          profitRate: typeof it.profitRate === 'number' ? it.profitRate : ((it.revenue ? ((it.profit ?? 0) / (it.revenue || 1)) * 100 : 0)),
+        }))
+        setProducts(mapped)
+      } catch (error) {
+        console.error('商品データの取得に失敗しました:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
     run()
   }, [])
@@ -67,6 +77,54 @@ export function ProductsTable() {
       setSortField(field)
       setSortDirection("desc")
     }
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">商品一覧</CardTitle>
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">読み込み中...</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">SKU</TableHead>
+                  <TableHead className="text-muted-foreground">商品名</TableHead>
+                  <TableHead className="text-muted-foreground text-right">在庫</TableHead>
+                  <TableHead className="text-muted-foreground text-right">売上</TableHead>
+                  <TableHead className="text-muted-foreground text-right">利益</TableHead>
+                  <TableHead className="text-muted-foreground text-right">利益率</TableHead>
+                  <TableHead className="text-muted-foreground text-right">注文数</TableHead>
+                  <TableHead className="text-muted-foreground">状態</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(10)].map((_, i) => (
+                  <TableRow key={i} className="border-border">
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

@@ -1,19 +1,35 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, TrendingUp, AlertCircle } from "lucide-react"
+import { AlertTriangle, Package, TrendingUp, AlertCircle, Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { InventoryChart } from "./inventory-chart"
-import { headers } from "next/headers"
 
-export async function InventoryManagementView() {
-  const h = await headers()
-  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
-  const proto = h.get('x-forwarded-proto') || (process.env.VERCEL ? 'https' : 'http')
-  const base = `${proto}://${host}`
+export function InventoryManagementView() {
+  const [products, setProducts] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const resProducts = await fetch(`${base}/api/gas/products`, { cache: 'no-store' })
-  const dataProducts = await resProducts.json()
-  const products: any[] = Array.isArray(dataProducts?.items) ? dataProducts.items : []
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true)
+        // 全期間のデータを取得
+        const resProducts = await fetch(`/api/gas/products?from=2000-01-01`, { cache: 'no-store' })
+        const dataProducts = await resProducts.json()
+        const fetchedProducts: any[] = Array.isArray(dataProducts?.items) ? dataProducts.items : []
+        setProducts(fetchedProducts)
+      } catch (error) {
+        console.error('在庫データの取得に失敗しました:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const outOfStock = products.filter((p) => (p.stock ?? p.currentStock ?? 0) === 0).length
   const lowStock = products.filter((p) => (p.stock ?? p.currentStock ?? 0) > 0 && (p.stock ?? p.currentStock ?? 0) < 20).length
@@ -25,6 +41,43 @@ export async function InventoryManagementView() {
     const stock = Number(p.stock ?? p.currentStock ?? 0)
     return sum + stock * avgPrice
   }, 0)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 p-4 bg-blue-500/10 rounded-lg">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <div>
+            <p className="font-semibold text-blue-500">在庫データを読み込んでいます...</p>
+            <p className="text-sm text-muted-foreground">在庫状況を取得中</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-6">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-12 w-12 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-8 w-12" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="p-6">
+          <Skeleton className="h-6 w-32 mb-4" />
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))}
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
