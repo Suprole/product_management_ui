@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Package, TrendingUp, ShoppingCart, Star, Loader2 } from "lucide-react"
+import { ArrowLeft, Package, TrendingUp, ShoppingCart, Star, Loader2, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { ProductSalesChart } from "./product-sales-chart"
 import { ProductInventoryChart } from "./product-inventory-chart"
@@ -231,7 +231,15 @@ export function ProductDetailView({ sku }: { sku: string }) {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{product.productName}</h1>
+          <a 
+            href={`https://www.amazon.co.jp/dp/${product.asin}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-3xl font-bold hover:text-blue-600 transition-colors group"
+          >
+            {product.productName}
+            <ExternalLink className="h-6 w-6 opacity-60 group-hover:opacity-100 transition-opacity" />
+          </a>
           <p className="text-muted-foreground mt-2">
             SKU: {product.sku} | ASIN: {product.asin}
           </p>
