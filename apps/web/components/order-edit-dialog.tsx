@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { Loader2, Save } from 'lucide-react'
 import type { Order } from '@/lib/types'
 
 interface OrderEditDialogProps {
@@ -59,16 +60,21 @@ export function OrderEditDialog({ order, onClose, onSuccess }: OrderEditDialogPr
       }
       
       toast({
-        title: '更新完了',
+        title: '✅ 更新完了',
         description: `発注ID: ${order.po_id} の情報を更新しました`,
+        duration: 3000,
       })
       
-      onSuccess()
+      // 少し遅延してから閉じる（トーストを見せるため）
+      setTimeout(() => {
+        onSuccess()
+      }, 500)
     } catch (err) {
       toast({
-        title: 'エラー',
+        title: '❌ エラー',
         description: err instanceof Error ? err.message : '更新に失敗しました',
         variant: 'destructive',
+        duration: 5000,
       })
     } finally {
       setSaving(false)
@@ -146,7 +152,17 @@ export function OrderEditDialog({ order, onClose, onSuccess }: OrderEditDialogPr
             キャンセル
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? '保存中...' : '保存'}
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                保存
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
